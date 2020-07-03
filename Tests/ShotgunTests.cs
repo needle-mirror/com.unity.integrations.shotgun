@@ -18,6 +18,7 @@ namespace Tests
         
         // In seconds
         private const double connectionTimeout = 20;
+        private const double shutdownTimeout = 5;
         private const double bootstrapTimeout = 100;
         private const double publishTimeout = 100;
 
@@ -27,6 +28,16 @@ namespace Tests
             // Restart the server, making sure there is no Shotgun client
             PythonRunner.StopServer(false);
 
+            // Make sure the Shotgun client has stopped
+            double initTime = EditorApplication.timeSinceStartup;
+            while (Bootstrap.IsClientAlive())
+            {
+                if (EditorApplication.timeSinceStartup - initTime > shutdownTimeout)
+                {
+                    Assert.That(false, Is.True);
+                }
+                System.Threading.Thread.Sleep(100);
+            }
             // Bootstrap Shotgun with our test client
             Bootstrap.SpawnClient(clientPath);
 
@@ -34,7 +45,7 @@ namespace Tests
             yield return PythonRunner.WaitForConnection(Constants.clientName, connectionTimeout);
 
             // Wait until the client is fully bootstrapped
-            double initTime = EditorApplication.timeSinceStartup;
+            initTime = EditorApplication.timeSinceStartup;
             while (!PythonRunner.CallServiceOnClient(Constants.clientName, "bootstrapped"))
             {
                 if (EditorApplication.timeSinceStartup - initTime > bootstrapTimeout)
@@ -91,7 +102,7 @@ namespace Tests
         {
             var qaReportFile = Path.GetFullPath("Packages/com.unity.integrations.shotgun/QAReport.md");
             var changelogFile = Path.GetFullPath("Packages/com.unity.integrations.shotgun/CHANGELOG.md");
-            var versionRegex = @"\[\d.\d.\d(\-preview(\.\d{1,3})?)?\]";
+            var versionRegex = @"\[\d+.\d+.\d+(\-preview(\.\d{1,3})?)?\]";
             Assert.True(File.Exists(qaReportFile));
             using (StreamReader qaReport = new StreamReader(qaReportFile), 
                                 changelog = new StreamReader(changelogFile))
